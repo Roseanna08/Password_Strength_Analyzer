@@ -186,9 +186,10 @@ if pas:
 
     st.progress(count / 5)
 
-    with st.expander("Why this rating ?"):
-        for i in reason:
-            st.write(i)
+    if reason:
+        with st.expander("Why this rating ?"):
+            for i in reason:
+                st.write(i)
         
     e=entropy(pas)
     st.write(f"**Entropy :** {e:.1f} bits")
