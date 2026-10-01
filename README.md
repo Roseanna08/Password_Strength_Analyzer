@@ -57,7 +57,5 @@ streamlit run password_strength.py
 
 ## Future Improvements
 
-- Deploy the app publicly via Streamlit Community Cloud
-- Add a fully randomized password generator option
 - Visualize password character composition with a chart
 - Support checking multiple passwords at once
