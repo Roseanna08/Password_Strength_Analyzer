@@ -23,7 +23,9 @@ This tool evaluates password security in real time. It classifies a password as 
 - Calculates entropy
 - Estimates brute-force crack time
 - Checks for known data breaches via the Have I Been Pwned API
-- Suggests a stronger password based on the one entered
+- Detects weak patterns : sequences, keyboard walks, repeated characters/blocks, years and common passwords(including leet-speak substitutions)
+- Suggests a stronger password, regenerating from scratch if the original contains a detected pattern
+- Generates a fresh password on demand (random or passphrase mode)
 - Logs check history locally (without ever storing the actual password)
 
 ## Tech Stack
