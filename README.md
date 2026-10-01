@@ -17,6 +17,12 @@ This tool evaluates password security in real time. It classifies a password as 
 ### Strong Password
 ![Strong Password Example](Strong_Password_Example.png)
 
+### Pattern Detection
+![Pattern Detection Example](Pattern_Detection_Example.png)
+
+### Password Generator
+![Password Generator Example](Password_Generator_Example.png)
+
 ## Features
 
 - Evaluates password strength (STRONG / MEDIUM / WEAK)
