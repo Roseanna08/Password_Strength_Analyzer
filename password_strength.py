@@ -6,7 +6,8 @@ import datetime
 import csv
 import streamlit as st
 
-st.set_page_config(page_title="Password Security Analyzer", page_icon="🔐")
+if __name__ == "__main__":
+    st.set_page_config(page_title="Password Security Analyzer", page_icon="🔐")
 
 def check_strength(password):
     l=len(password)
@@ -36,15 +37,15 @@ def check_strength(password):
     flags=[uc,lc,di,ch,le]
 
     if uc== False:
-        reasons.append("No uppercase charecters used")
+        reasons.append("No uppercase characters used")
     if lc== False:
-        reasons.append("No lower case charecters used")
+        reasons.append("No lower case characters used")
     if di== False:
         reasons.append("No digits used")
     if ch== False:
-        reasons.append("No special charecters used")
+        reasons.append("No special characters used")
     if le== False :
-        reasons.append("Password length should atleast be 8 charecters")
+        reasons.append("Password length should atleast be 8 characters")
 
     if count==5:
         return "STRONG",reasons,flags,count
@@ -52,6 +53,52 @@ def check_strength(password):
         return "MEDIUM",reasons,flags,count
     else:
         return "WEAK",reasons,flags,count
+
+def detect_patterns(password):
+    weak=[]
+    c1={"@":"a","$":"s","&":"a","1":"i","0":"o","3":"e","4":"a","5":"s","7":"t","!":"i"}
+    c3={**c1,"1":"l"} 
+    c2=["password","admin","welcome","qwerty","letmein","iloveyou","iloveu","monkey","dragon","login"] #common passwords
+    p=password.lower()
+    l=len(p)
+    poss=["asdfghjkl","qwertyuiop","zxcvbnm","abcdefghijklmnopqrstuvwxyz"]
+    for i in range(l-3): 
+        q=i+4 
+        for m in poss:
+            if p[i:q] in m or p[i:q] in m[::-1] :
+                if "Consecutive letters" not in weak:
+                      weak.append("Consecutive letters")
+        if p[i:q] in "01234567890" or p[i:q] in "09876543210":
+            if "Consecutive digits" not in weak:
+                weak.append("Consecutive digits")
+    for i in range(l-3):
+        q=i+4
+        if p[i:q].isdigit():
+            if p[i:q].startswith("19") or p[i:q].startswith("20"):
+                if "Year used in password" not in weak:
+                    weak.append("Year used in password")
+    for i in range(l-2):
+        if p[i]==p[i+1]==p[i+2]:
+            if "Repeated characters" not in weak:
+                weak.append("Repeated characters")
+    for b in range(2, l//2 + 1):
+        for i in range(l - 2*b + 1):
+            if p[i:i+b] == p[i+b:i+2*b]:
+                if len(set(p[i:i+b])) > 1:
+                    if "Repeated block" not in weak:
+                        weak.append("Repeated block")
+    for a in [c1,c3]:
+        n="" 
+        for i in range(l): 
+            if p[i] in a:
+                n+=a[p[i]]
+            else:
+                n+=p[i]
+        for w in c2:
+            if w in n:
+                if "Common password" not in weak:
+                    weak.append("Common password")
+    return weak
 
 def entropy(password):
     l=len(password)
@@ -124,8 +171,19 @@ def check_breach(password):
     else:
         return "Password NOT Breached"
 
+def remove_year(password):
+    i=0
+    while i < len(password) -3:
+        c= password[i:i+4]
+        if c.isdigit() and c[:2] in ("19","20"):
+            password= password[:i] + password[i+4:]
+        else:
+            i+=1
+    return password
+
 def suggest_password(password,flags):
-    new_password=password
+    new_password=remove_year(password)
+    flags = check_strength(new_password)[2] #recompute as removing the year might get rid of the only digits present in the password
     l=len(new_password)
     if flags[0]== False:
         uppe=False
@@ -152,7 +210,15 @@ def suggest_password(password,flags):
     if flags[4]== False:
         while len(new_password)<8:
             new_password += random.choice("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+    if new_password == password:
+        for i in range(4):
+            new_password+= random.choice("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*-+=_")
     return new_password
+
+def generate_passphrase():
+    words = ["tiger","cloud","rain","trees","maple","ivory","quantum","galaxy","thor","balloons","rhino"]
+    picks = random.sample(words, 4)
+    return "-".join(picks) + str(random.randint(10,99))
 
 def log_check(strength,entropy,breached):
     now = datetime.datetime.now()
@@ -170,49 +236,75 @@ def log_check(strength,entropy,breached):
     r.writerow([formatted,strength,entropy,breached])
     f.close()
 
-st.title("Password Strength Analyzer")
+if __name__ == "__main__":
+    st.title("Password Strength Analyzer")
+    pas= st.text_input("Enter a password to analyze :")
 
-pas= st.text_input("Enter a password to analyze :")
-
-if pas:
-    
-    result,reason,flags,count=check_strength(pas)
-    if result == "STRONG":
-        st.success(f"Strength : {result}")
-    elif result == "MEDIUM":
-        st.warning(f"Strength : {result}")
-    else:
-        st.error(f"Strength : {result}")
-
-    st.progress(count / 5)
-
-    if reason:
-        with st.expander("Why this rating ?"):
-            for i in reason:
-                st.write(i)
+    if pas:
         
-    e=entropy(pas)
-    st.write(f"**Entropy :** {e:.1f} bits")
-    
-    ct=crack_time(e)
-    st.write(f"**Estimated crack time :** {ct}")
+        result,reason,flags,count=check_strength(pas)
+        patterns= detect_patterns(pas)
+        reason.extend(patterns)
 
-    try:
-        s=check_breach(pas)
-        st.write(s)
-        if "NOT Breached" in s:
-            breached = "no"
+        if "Common password" in patterns :
+            result="WEAK"
+        if result == "STRONG" and patterns != []:
+            result="MEDIUM"
+        
+        if result == "STRONG":
+            st.success(f"Strength : {result}")
+        elif result == "MEDIUM":
+            st.warning(f"Strength : {result}")
         else:
-            breached = "yes"
-    except Exception as err:
-        st.warning("⚠️ Breach check unavailable right now (network issue). Skipping this check.")
-        breached = "unknown"
+            st.error(f"Strength : {result}")
 
-    if result != "STRONG":
-        sp=suggest_password(pas,flags)
-        st.write(f"**Suggested strong password :** {sp}")
+        if result == "WEAK" and count>2:
+            st.progress(0.2)
+        elif result== "MEDIUM" and count==5:
+            st.progress(0.6)
+        else:
+            st.progress(count/5)
+
+        if reason:
+            with st.expander("Why this rating ?"):
+                for i in reason:
+                    st.write(i)
+            
+        e=entropy(pas)
+        st.write(f"**Entropy :** {e:.1f} bits")
         
-    log_check(result,e,breached)
+        ct=crack_time(e)
+        st.write(f"**Estimated crack time :** {ct}")
+
+        try:
+            s=check_breach(pas)
+            st.write(s)
+            if "NOT Breached" in s:
+                breached = "no"
+            else:
+                breached = "yes"
+        except Exception as err:
+            st.warning("⚠️ Breach check unavailable right now (network issue). Skipping this check.")
+            breached = "unknown"
+
+        if result != "STRONG":
+            non_year = [p for p in patterns if p != "Year used in password"]
+            if non_year :
+                sp=suggest_password("",flags)
+            else:
+                sp=suggest_password(pas,flags)
+            st.write(f"**Suggested strong password :** {sp}")
+            
+        log_check(result,e,breached)
+
+    with st.expander("Generate a password instead"):
+        col1, col2, col3 = st.columns([5,5,6])
+        with col1:
+            if st.button("Generate Random"):
+                st.write(f"**Generated password:** {suggest_password('', [])}")
+        with col2:
+            if st.button("Generate Passphrase"):
+                st.write(f"**Generated password:** {generate_passphrase()}")
 
     st.markdown("<p style='text-align: right; color: gray; font-size: 12px;'>Roseanna Robinson</p>",unsafe_allow_html=True)
 
